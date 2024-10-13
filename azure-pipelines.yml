@@ -1,0 +1,58 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+  imageName: 'sofiabarbirato/demo'  # Nome da imagem
+  imageTag: 'latest'                  # Tag da imagem
+
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    steps:
+    - task: NuGetToolInstaller@1
+    - task: NuGetCommand@2
+      inputs:
+        restoreSolution: '$(solution)'
+    - task: VSBuild@1
+      inputs:
+        solution: '$(solution)'
+        platform: '$(buildPlatform)'
+        configuration: '$(buildConfiguration)'
+
+- stage: Staging
+  jobs:
+  - job: DeployToStaging
+    steps:
+    - task: Docker@2
+      inputs:
+        command: 'buildAndPush'
+        containerRegistry: 'DockerHubConnection'
+        repository: '$(imageName)'
+        dockerfile: '**/Dockerfile'
+        tags: |
+          $(imageTag)  # Usando a tag latest
+
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscription: 'AzureConnection'
+        appName: 'ambiental-aplicacao-staging'
+        package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+        deploymentMethod: 'auto'
+
+- stage: Production
+  jobs:
+  - job: DeployToProduction
+    steps:
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscription: 'AzureConnection'
+        appName: 'ambiental-aplicacao-producao'
+        package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+        deploymentMethod: 'auto'
