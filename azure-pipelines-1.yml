@@ -1,0 +1,84 @@
+trigger:
+- main
+- develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+  imageName: 'sofiabarbirato/demo'  
+  imageTag: 'latest'                
+  containerRegistry: 'DockerHubConnection'  
+  azureSubscription: 'AzureConnection'  
+
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    steps:
+    - task: NuGetToolInstaller@1
+    - task: NuGetCommand@2
+      inputs:
+        restoreSolution: '$(solution)'
+    - task: VSBuild@1
+      inputs:
+        solution: '$(solution)'
+        platform: '$(buildPlatform)'
+        configuration: '$(buildConfiguration)'
+
+    # Build e push da imagem Docker
+    - task: Docker@2
+      inputs:
+        command: 'buildAndPush'
+        containerRegistry: '$(containerRegistry)'
+        repository: '$(imageName)'
+        dockerfile: '**/Dockerfile'
+        tags: |
+          $(imageTag)
+
+- stage: Staging
+  jobs:
+  - job: DeployToStaging
+    steps:
+    - checkout: self
+    
+    # Deploy usando Docker Compose para Staging
+    - task: DockerCompose@0
+      inputs:
+        containerregistry: '$(containerRegistry)'
+        dockerComposeFile: 'Ambiental/docker-compose.yml'
+        action: 'RunServices'
+        azureSubscription: '$(azureSubscription)'
+        dockerComposeCommand: 'up -d'
+
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        appName: 'ambiental-aplicacao-staging'
+        package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+        deploymentMethod: 'auto'
+
+- stage: Production
+  jobs:
+  - job: DeployToProduction
+    steps:
+    - checkout: self
+
+    # Deploy usando Docker Compose para Produção
+    - task: DockerCompose@0
+      inputs:
+        containerregistry: '$(containerRegistry)'
+        dockerComposeFile: 'Ambiental/docker-compose.yml'
+        action: 'RunServices'
+        azureSubscription: '$(azureSubscription)'
+        dockerComposeCommand: 'up -d'
+
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        appName: 'ambiental-aplicacao-producao'
+        package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+        deploymentMethod: 'auto'
