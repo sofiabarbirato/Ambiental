@@ -33,16 +33,19 @@ Antes de iniciar, você precisará dos seguintes componentes instalados:
 - [Oracle Data Provider for .NET (ODP.NET)](https://www.oracle.com/database/technologies/dotnet-odacdeploy-downloads.html) instalado e configurado
 
 ## Como Executar o Projeto Localmente
+```bash
 
 ### 1. Clonar o Repositório
 
 Primeiro, clone o repositório do GitHub para o seu ambiente local:
 
-```bash
 git clone https://github.com/sofiabarbirato/Ambiental.git
 cd Ambiental 
 
 ### 2. Restaurar Pacotes
+
+Primeiro, clone o repositório do GitHub para o seu ambiente local:
+
 dotnet restore
 
 ### 3. Configurar Conexão com o BD
@@ -53,5 +56,16 @@ dotnet restore
 }
 
 ### 4. Executar a Aplicação
+
 dotnet run --project ./Ambiental/Ambiental.csproj
+
+### Containerização e Orquestração - Docker
+
+1. Construir a Imagem:
+docker-compose build
+
+2. Subir os Contêineres:
+docker-compose up -d
+
+
 
