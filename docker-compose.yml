@@ -12,7 +12,7 @@ services:
       - db  
     environment:
       - ASPNETCORE_ENVIRONMENT=Development  
-      - ConnectionStrings__DatabaseConnection=Data Source=oracle-db;User ID=RM551721;Password=020503;Pooling=True;Connection Timeout=60;  # Ajusta a string de conexão para o banco Oracle no contêiner
+      - ConnectionStrings__DatabaseConnection=Data Source=db;User ID=RM551721;Password=020503;Pooling=True;Connection Timeout=60;  # Ajusta a string de conexão para o banco Oracle no contêiner
 
   db:
     image: oracle/database:19.3.0-ee 
