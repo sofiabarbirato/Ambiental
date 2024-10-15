@@ -2,14 +2,16 @@ trigger:
 - main
 
 pool:
-  vmImage: 'windows-latest'
+  vmImage: 'ubuntu-latest'
 
 variables:
   solution: '**/*.sln'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
   imageName: 'sofiabarbirato/demo'  # Nome da imagem
-  imageTag: 'latest'                  # Tag da imagem
+  imageTag: 'latest'                # Tag da imagem
+  containerRegistry: 'DockerHubConnection'  # Nome da conexão com Docker Hub
+  azureSubscription: 'AzureConnection'  # Nome da conexão com Azure
 
 stages:
 - stage: Build
@@ -26,22 +28,34 @@ stages:
         platform: '$(buildPlatform)'
         configuration: '$(buildConfiguration)'
 
+    # Build e push da imagem Docker
+    - task: Docker@2
+      inputs:
+        command: 'buildAndPush'
+        containerRegistry: '$(containerRegistry)'
+        repository: '$(imageName)'
+        dockerfile: '**/Dockerfile'
+        tags: |
+          $(imageTag)
+
 - stage: Staging
   jobs:
   - job: DeployToStaging
     steps:
-    - task: Docker@2
+    - checkout: self
+    
+    # Deploy usando Docker Compose para Staging
+    - task: DockerCompose@0
       inputs:
-        command: 'buildAndPush'
-        containerRegistry: 'DockerHubConnection'
-        repository: '$(imageName)'
-        dockerfile: '**/Dockerfile'
-        tags: |
-          $(imageTag)  # Usando a tag latest
+        containerregistry: '$(containerRegistry)'
+        dockerComposeFile: '*/docker-compose.yml'
+        action: 'RunServices'
+        azureSubscription: '$(azureSubscription)'
+        dockerComposeCommand: 'up -d'
 
     - task: AzureWebApp@1
       inputs:
-        azureSubscription: 'AzureConnection'
+        azureSubscription: '$(azureSubscription)'
         appName: 'ambiental-aplicacao-staging'
         package: '$(System.DefaultWorkingDirectory)/**/*.zip'
         deploymentMethod: 'auto'
@@ -50,9 +64,20 @@ stages:
   jobs:
   - job: DeployToProduction
     steps:
+    - checkout: self
+
+    # Deploy usando Docker Compose para Produção
+    - task: DockerCompose@0
+      inputs:
+        containerregistry: '$(containerRegistry)'
+        dockerComposeFile: '*/docker-compose.yml'
+        action: 'RunServices'
+        azureSubscription: '$(azureSubscription)'
+        dockerComposeCommand: 'up -d'
+
     - task: AzureWebApp@1
       inputs:
-        azureSubscription: 'AzureConnection'
+        azureSubscription: '$(azureSubscription)'
         appName: 'ambiental-aplicacao-producao'
         package: '$(System.DefaultWorkingDirectory)/**/*.zip'
         deploymentMethod: 'auto'
